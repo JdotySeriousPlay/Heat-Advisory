@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heat Advisory: A Public Health Case File</title>
+<style>
+:root{
+  --navy:#1b2a41; --navy-2:#2c3e5c; --ink:#1f2937; --muted:#5b6574;
+  --bg:#f4f1ec; --card:#ffffff; --line:#e3ddd3; --paper:#fffdf9;
+  --heat:#d9591f; --heat-dark:#a8420f; --heat-soft:#fdeee6;
+  --good:#1f7a4d; --good-soft:#e5f4ec; --warn:#9a3412; --warn-soft:#fff1e8;
+  --focus:#0b6fcc; --radius:14px;
+  --shadow:0 1px 2px rgba(27,42,65,.06),0 6px 20px rgba(27,42,65,.08);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;font-size:17px}
+button{font:inherit;cursor:pointer;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+#app:focus,#app:focus-visible{outline:none}
+.wrap{max-width:920px;margin:0 auto;padding:20px 16px 48px}
+h1,h2,h3{color:var(--navy);line-height:1.25;margin:0 0 10px}
+h1{font-size:30px} h2{font-size:22px} h3{font-size:17px}
+p{margin:0 0 12px}
+.muted{color:var(--muted)}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--heat-dark);margin-bottom:6px}
+
+/* header */
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.brand{font-weight:800;color:var(--navy);font-size:18px;letter-spacing:.01em}
+.brand small{display:block;font-weight:600;font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.link-btn{background:none;border:0;color:var(--muted);font-size:14px;padding:6px 8px;border-radius:8px;white-space:nowrap}
+.link-btn:hover{color:var(--navy);background:#e9e4da}
+.statusbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.timeline{display:flex;gap:4px;flex:1 1 420px;list-style:none;margin:0;padding:0}
+.timeline li{flex:1;text-align:center;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#8a8378;padding-top:10px;position:relative}
+.timeline li::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;border-radius:999px;background:#e2dbcf}
+.timeline li.done{color:var(--good)} .timeline li.done::before{background:var(--good)}
+.timeline li.now{color:var(--heat-dark)} .timeline li.now::before{background:var(--heat)}
+.meter{display:flex;gap:8px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap}
+.chip b{color:var(--heat-dark)}
+.chip.bump{animation:bump .6s}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.12);background:var(--heat-soft)}100%{transform:scale(1)}}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+.stack>*+*{margin-top:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:12px 22px;font-weight:600;background:var(--heat);color:#fff}
+.btn:hover{background:var(--heat-dark)}
+.btn:disabled{background:#c9c2b8;cursor:not-allowed}
+.btn.secondary{background:var(--navy)} .btn.secondary:hover{background:var(--navy-2)}
+.btn.ghost{background:transparent;color:var(--navy);border:2px solid var(--navy)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+/* avatar */
+.avatar{position:relative;flex:0 0 auto;width:56px;height:56px;border-radius:50%;overflow:hidden;background:var(--navy);display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.avatar.lg{width:96px;height:96px;font-size:30px}
+.person{display:flex;gap:12px;align-items:center}
+.person .who{font-weight:700;color:var(--navy);line-height:1.2}
+.person .who small{display:block;font-weight:500;color:var(--muted);font-size:13px}
+
+/* documents */
+.docs{display:grid;gap:12px}
+.doc{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.doc-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f6f1e8;border-bottom:1px solid var(--line);font-size:13px}
+.doc-tag{font-weight:800;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--navy);color:#fff}
+.doc-tag.alert{background:#b42318}.doc-tag.voice{background:#6b4fa0}.doc-tag.mail{background:#2c5e8a}.doc-tag.notes{background:#7a5a12}.doc-tag.data{background:#1f7a4d}
+.doc-meta{color:var(--muted);flex:1}
+.doc-body{padding:14px 16px}
+.doc-body p:last-child{margin-bottom:0}
+.doc-body ul{margin:0;padding-left:20px}
+.doc-body li{margin-bottom:4px}
+.email-lines{font-size:14px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+.email-lines b{color:var(--ink);font-weight:600}
+.advisory{border-left:5px solid #b42318}
+.photo{margin:0}
+.photo img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
+.photo .ph-missing{display:none;aspect-ratio:16/9;background:repeating-linear-gradient(45deg,#efe8dc,#efe8dc 12px,#f6f1e8 12px,#f6f1e8 24px);color:var(--muted);font-size:14px;place-items:center}
+.photo.missing img{display:none}
+.photo.missing .ph-missing{display:grid}
+.photo figcaption{padding:10px 16px 14px;font-size:14px;color:var(--muted)}
+.advisory h3{color:#b42318;font-size:15px;letter-spacing:.04em;text-transform:uppercase}
+audio{width:100%;max-width:420px;margin-bottom:8px}
+.transcript-toggle{background:none;border:0;color:var(--focus);font-size:14px;padding:0;text-decoration:underline;margin-bottom:8px}
+.chart svg{width:100%;max-width:460px;height:auto;display:block}
+.legend{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:22px;border-top:2px dashed #1b2a41}
+.chart-summary{font-size:14px;color:var(--muted);margin-top:8px}
+table.data{width:100%;border-collapse:collapse;font-size:15px}
+table.data th,table.data td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.data th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+table.data td.num,table.data th.num{text-align:right}
+.table-scroll{overflow-x:auto}
+
+/* questions */
+.qbox{border-top:2px solid var(--line);padding-top:16px}
+.qlabel{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.options{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.opt{text-align:left;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.opt:hover:not(:disabled){border-color:var(--navy-2)}
+.opt .dot{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid #b9b0a3;display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--muted)}
+.opt.tried{background:#faf6f2;border-color:#e2c7b5;color:#7a6a5c}
+.opt.tried .dot{border-color:var(--warn);color:var(--warn)}
+.opt.correct{border-color:var(--good);background:var(--good-soft)}
+.opt.correct .dot{border-color:var(--good);background:var(--good);color:#fff}
+.opt.sel{border-color:var(--navy);background:#eef2f8}
+.opt.sel .dot{background:var(--navy);border-color:var(--navy);color:#fff}
+.opt:disabled{cursor:default}
+.opt .desc{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.opt .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:6px;padding:2px 8px;border-radius:999px;background:#eee;color:#555}
+.counter-note{font-size:14px;font-weight:600;color:var(--muted);margin-top:8px}
+.feedback{margin-top:14px}
+.fb-card{border-radius:12px;padding:14px 16px;border:1px solid}
+.fb-card+.fb-card{margin-top:10px}
+.fb-card.good{background:var(--good-soft);border-color:#b9dfc9}
+.fb-card.try{background:var(--warn-soft);border-color:#f3cfb6}
+.fb-title{font-weight:700;margin-bottom:4px}
+.fb-card.good .fb-title{color:var(--good)} .fb-card.try .fb-title{color:var(--warn)}
+.fb-card ul{margin:6px 0 0;padding-left:20px}
+.cost{display:inline-block;margin-top:8px;font-size:13px;font-weight:700;color:var(--warn);background:#fff;border:1px solid #f3cfb6;border-radius:999px;padding:2px 10px}
+.real{margin-top:10px;font-size:14px;background:#fff;border-left:4px solid var(--navy);border-radius:6px;padding:8px 12px}
+.real b{color:var(--navy)}
+.real a{color:var(--focus)}
+
+/* builder & sort */
+.group{margin-top:14px}
+.group-label{font-weight:700;color:var(--navy);margin-bottom:6px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:2px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-size:15px;text-align:left}
+.pill[aria-pressed="true"]{border-color:var(--navy);background:#eef2f8;font-weight:600}
+.pill.wrong{border-color:var(--warn);background:var(--warn-soft)}
+.pill.right{border-color:var(--good);background:var(--good-soft)}
+.statement{margin-top:16px;background:var(--paper);border:1px dashed #cdbfae;border-radius:12px;padding:14px 16px;font-size:16px}
+.statement .blank{display:inline-block;min-width:90px;border-bottom:2px solid #b9b0a3;color:var(--muted);font-style:italic}
+.statement .filled{font-weight:700;color:var(--navy);border-bottom:2px solid var(--navy)}
+.sort-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.sort-row:last-child{border-bottom:0}
+.sort-row .item{font-size:16px}
+.sort-row .item small{display:block;color:var(--warn);font-size:14px;margin-top:4px}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:7px 12px;font-size:14px;font-weight:600;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+.sort-row.right .seg{border-color:var(--good)}
+.sort-row.wrong .seg{border-color:var(--warn)}
+
+/* summary */
+.aar{display:grid;gap:10px;margin-top:12px}
+.aar-item{display:grid;grid-template-columns:110px 1fr;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.aar-item .when{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--heat-dark)}
+.aar-item .fn{display:inline-block;font-size:11px;font-weight:700;color:var(--navy-2);background:#e9eef6;padding:2px 8px;border-radius:999px;margin-top:4px}
+.aar-item .miss{font-size:13px;color:var(--warn);margin-top:4px}
+.aar-item .hit{font-size:13px;color:var(--good);margin-top:4px}
+.stat-row{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+.stat{flex:1 1 150px;background:var(--navy);color:#fff;border-radius:12px;padding:14px 16px}
+.stat b{display:block;font-size:26px}
+.stat span{font-size:13px;opacity:.85}
+.sources{margin-top:18px;font-size:14px}
+.sources summary{cursor:pointer;font-weight:700;color:var(--navy)}
+.sources ol{padding-left:20px}
+.sources a{color:var(--focus);word-break:break-word}
+.src-list{padding-left:22px;margin:0}
+.src-list li{margin-bottom:16px}
+.src-list .apa{padding-left:1.5em;text-indent:-1.5em;margin-bottom:4px}
+.src-list .apa a{color:var(--focus);word-break:break-word}
+.src-list .used{font-size:14px;color:var(--muted);margin:0}
+.inline-link{background:none;border:0;padding:0;color:var(--focus);text-decoration:underline;font-size:inherit}
+.done-note{margin-top:16px;background:var(--good-soft);color:var(--good);font-weight:600;padding:12px 16px;border-radius:10px}
+.guide{display:flex;gap:16px;align-items:flex-start}
+.bubble{background:#faf8f4;border:1px solid var(--line);border-radius:4px var(--radius) var(--radius) var(--radius);padding:14px 16px;flex:1}
+.bubble p:last-child{margin-bottom:0}
+.role{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+
+/* email */
+.mail{background:#fff;border:1px solid #dadce0;border-radius:12px;overflow:hidden;font-family:Roboto,"Segoe UI",Arial,sans-serif}
+.mail-bar{display:flex;justify-content:space-between;padding:8px 16px;background:#f6f8fc;border-bottom:1px solid #e3e6ea;font-size:13px;color:#5f6368}
+.mail-icons{letter-spacing:2px}
+.mail-subject{font-size:20px;font-weight:400;color:#202124;margin:14px 16px 10px}
+.mail-head{display:flex;gap:12px;align-items:flex-start;padding:0 16px}
+.mail-head .avatar{width:40px;height:40px;font-size:14px}
+.mail-from{flex:1;min-width:0;font-size:14px;color:#202124;line-height:1.4}
+.mail-from .addr{color:#5f6368;font-size:13px;word-break:break-all}
+.mail-to{color:#5f6368;font-size:13px}
+.mail-date{font-size:12px;color:#5f6368;white-space:nowrap}
+.mail-body{padding:14px 16px 6px 68px;font-size:15px;color:#202124}
+.mail-body p{margin:0 0 10px}
+.mail-sig{margin-top:14px;padding-top:8px;color:#5f6368;font-size:13px;border-top:1px solid #eee;display:inline-block}
+.mail-quote{margin-top:14px;font-size:13px;color:#5f6368}
+.mail-quote blockquote{margin:6px 0 0;padding-left:10px;border-left:2px solid #ccc}
+.mail-details{border-collapse:collapse;font-size:14px;margin:10px 0}
+.mail-details th{text-align:left;font-weight:500;color:#5f6368;padding:3px 16px 3px 0}
+.mail-details td{padding:3px 0;color:#202124}
+.mail-footer{font-size:12px;color:#80868b;margin-top:10px}
+.mail-actions{display:flex;gap:10px;padding:8px 16px 16px 68px}
+.mail-actions span{border:1px solid #dadce0;border-radius:18px;padding:6px 16px;font-size:14px;color:#3c4043}
+.chart{margin:10px 0;padding:12px;border:1px solid #eee;border-radius:8px;background:#fcfcfd}
+.chart-title{font-weight:600;font-size:14px;margin-bottom:6px}
+/* voicemail */
+.vm{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.vm-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.vm-date{font-size:13px;color:var(--muted)}
+.vm-caller{display:flex;gap:12px;align-items:center}
+.vm-caller strong{display:block;color:var(--navy)}
+.vm-caller small{color:var(--muted);font-size:13px}
+.vm-trans{margin-top:12px;background:#f7f5f1;border-radius:12px;padding:12px 14px}
+.vm-label{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.vm-trans p{margin:0 0 8px}.vm-trans p:last-child{margin:0}
+.player{display:flex;align-items:center;gap:10px;margin-top:12px;background:#eef1f6;border-radius:999px;padding:6px 14px 6px 6px}
+.pl-btn{width:36px;height:36px;border-radius:50%;border:0;background:var(--navy);color:#fff;font-size:13px;flex:0 0 auto}
+.pl-seek{flex:1;accent-color:var(--heat)}
+.pl-time{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* NWS */
+.nws{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.nws-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;background:#fff4ec;border-bottom:1px solid #f3d5c0}
+.nws-badge{background:#ff7f50;color:#1f1300;font-weight:800;font-size:13px;padding:4px 10px;border-radius:4px;letter-spacing:.02em}
+.nws-meta{font-size:13px;color:var(--muted)}
+.nws-text{margin:0;padding:14px 16px;font-family:ui-monospace,"Courier New",monospace;font-size:13.5px;line-height:1.5;white-space:pre-wrap;color:#111;max-height:360px;overflow:auto}
+@media (max-width:640px){ .mail-from .addr{display:block} .mail-body,.mail-actions{padding-left:16px} .mail-head{flex-wrap:wrap} .mail-date{width:100%;padding-left:52px} }
+.screen{animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:640px){
+  h1{font-size:25px}
+  .card{padding:16px}
+  .timeline li{font-size:0;padding-top:8px}
+  .timeline li.now{font-size:11px;flex:3}
+  .guide{flex-direction:column;gap:10px}
+  .sort-row{grid-template-columns:1fr}
+  .seg{width:100%} .seg button{flex:1}
+  .aar-item{grid-template-columns:1fr;gap:4px}
+}
+@media print{
+  body{background:#fff} .topbar .link-btn,.statusbar,.actions{display:none!important}
+  .card{box-shadow:none;border:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">Heat Advisory<small>Case file · Cedar Valley County Health District (fictional)</small></div>
+    <div><button class="link-btn" id="sourcesBtn" type="button">Sources</button><button class="link-btn" id="restartBtn" type="button">↺ Start over</button></div>
+  </div>
+  <div class="statusbar" id="statusbar" hidden>
+    <ol class="timeline" id="timeline" aria-label="Case timeline"></ol>
+    <div class="meter" aria-live="polite">
+      <span class="chip" id="chipDays">Time lost: <b>0 days</b></span>
+      <span class="chip" id="chipVisits">Extra ER visits: <b>0</b></span>
+    </div>
+  </div>
+  <main id="app" tabindex="-1"></main>
+</div>
+
+<script>
+/* =====================================================================
+   CONTENT: edit here.
+   image: portrait path (blank or missing file = initials).
+   audio: MP3 path (blank = transcript only).
+   ===================================================================== */
+const PEOPLE = {
+  director:   { name:"Public Health Director", sub:"Your supervisor", initials:"PD", image:"img/director.jpg", color:"#1b2a41" },
+  provider:   { name:"Nurse Practitioner", sub:"Northside Urgent Care", initials:"NP", image:"img/provider.jpg", color:"#1f7a4d" },
+  ehs:        { name:"Environmental Health Specialist", sub:"Your coworker", initials:"EH", image:"img/lead.jpg", color:"#2c5e8a" },
+  worker:     { name:"Roofing Crew Member", sub:"On the job 3 days", initials:"RW", image:"img/worker.jpg", color:"#b8461a" },
+  supervisor: { name:"Site Supervisor", sub:"Roofing contractor", initials:"SS", image:"img/supervisor.jpg", color:"#7a5a12" },
+  epi:        { name:"Epidemiologist", sub:"Health district data team", initials:"EP", image:"img/epidemiologist.jpg", color:"#4b3f8a" }
+};
+
+const SOURCES = [
+  { apa:"Occupational Safety and Health Administration. (n.d.). <i>Heat: Protecting new workers</i>. U.S. Department of Labor.",
+    u:"https://www.osha.gov/heat-exposure/protecting-new-workers",
+    used:"New and returning workers carry the most risk: almost half of heat-related worker deaths happen on the first day, and over 70% in the first week. Also the 20% rule for building up time in the heat." },
+  { apa:"Occupational Safety and Health Administration. (n.d.). <i>Heat: Heat-related illnesses and first aid</i>. U.S. Department of Labor.",
+    u:"https://www.osha.gov/heat-exposure/illness-first-aid",
+    used:"Symptoms of heat exhaustion and heat stroke used in the voicemail and the secondary prevention feedback." },
+  { apa:"Harris, W., Trueblood, A., Dufoe, D., Brooks, R. D., West, G., &amp; Roelofs, C. (2025, August). <i>Heat injuries and illnesses among construction workers</i> [Data bulletin]. CPWR – The Center for Construction Research and Training.",
+    u:"https://www.cpwr.com/wp-content/uploads/DataBulletin-August2025.pdf",
+    used:"Why the case centers on construction: the industry is about 7% of U.S. workers but over one-third of heat-related worker deaths (2023)." },
+  { apa:"Vaidyanathan, A., Gates, A., Iniguez, P., Lee, J., &amp; Bernstein, A. (2026). Notes from the field: Heat-related emergency department visits — June 28–July 7, 2026. <i>Morbidity and Mortality Weekly Report, 75</i>(36), 563–565.",
+    u:"https://doi.org/10.15585/mmwr.mm7536a2",
+    used:"Heat-related ER visit rates were highest among men aged 26–54 in most regions, which shaped the patient pattern in the case." },
+  { apa:"Occupational Safety and Health Administration. (n.d.). <i>Heat injury and illness prevention in outdoor and indoor work settings rulemaking</i>. U.S. Department of Labor.",
+    u:"https://www.osha.gov/heat-exposure/rulemaking/",
+    used:"Status of the federal heat rule: proposed in August 2024, hearings in 2025, not yet final as of September 2026." },
+  { apa:"Heat Injury and Illness Prevention in Outdoor and Indoor Work Settings, 86 Fed. Reg. 59309 (proposed Oct. 27, 2021) (advance notice of proposed rulemaking).",
+    u:"https://www.govinfo.gov/content/pkg/FR-2021-10-27/html/2021-23250.htm",
+    used:"Why official counts run low: heat illness is underreported, partly because workers fear retaliation and lost wages." }
+];
+
+const PHASES = ["Monday","Tuesday","Thursday","Friday","Next month","Next summer","Wrap-up"];
+
+const INTRO = {
+  audio: "audio/01-intro-director.mp3",
+  text: [
+    "Welcome to the health district. You started last week, and it's already your first heat wave.",
+    "This case file follows one real-world problem from the first alert to a year later. You'll read what public health staff actually work from: alerts, voicemails, interview notes, data, and emails. Then you'll make the calls.",
+    "Take your time with the documents. The answers are in the evidence. Weak choices cost time, and the clock is shown at the top."
+  ]
+};
+
+/* Step types: mc, pick, builder, sort. cost = {days, visits} added on a weak attempt. */
+const STEPS = [
+  /* ---------------- MONDAY ---------------- */
+  {
+    id:"s1", phase:0, fn:"Assessment", title:"Monday, 8:15 AM: Your inbox",
+    lead:"Three things landed overnight.",
+    docs:[
+      { type:"email", automated:true, fromName:"Syndromic Surveillance Alerts", fromAddr:"noreply@statesyndromic.org",
+        to:"CVCHD Epidemiology Team", date:"Mon, Jul 13, 2026, 6:00 AM",
+        subject:"[ALERT] Heat-related illness ED visits above expected: Cedar Valley County",
+        body:["This is an automated alert. Emergency department visits for heat-related illness in your jurisdiction are above the expected level."],
+        chart:{ title:"Heat-related illness ED visits, Cedar Valley County", bars:[{l:"Thu",v:1},{l:"Fri",v:2},{l:"Sat",v:3},{l:"Sun",v:5}], expected:1,
+          summary:"11 heat-related ER visits over four days, rising each day. The expected level for early July is about 1 visit per day." },
+        details:[["Syndrome","Heat-related illness"],["Jurisdiction","Cedar Valley County"],["Visits, past 4 days","11"],["Expected","About 4"],["Status","Above alert threshold"]],
+        footer:"Log in to the surveillance portal to view visit-level data. Do not reply to this message." },
+      { type:"voicemail", person:"provider", caller:"Northside Urgent Care", number:"(937) 555-0143", date:"Sun, Jul 12 · 9:42 PM",
+        audio:"audio/02-voicemail-np.mp3",
+        body:["Hi, this is the nurse practitioner at Northside Urgent Care. We've seen four guys this week with heat exhaustion: dizzy, vomiting, soaked in sweat. One was confused and his temperature was 104, so we sent him to the ER.",
+              "Two of them told me they work for landscaping companies. I don't know if that's a pattern. I just thought you'd want to know."] },
+      { type:"advisory", issued:"400 AM EDT Mon Jul 13 2026", area:"Cedar Valley County",
+        headline:"...HEAT ADVISORY IN EFFECT FROM NOON TODAY TO 8 PM EDT SATURDAY...",
+        bullets:[["WHAT","Heat index values of 100 to 105 expected each afternoon."],["WHERE","Cedar Valley County."],["WHEN","From noon today to 8 PM EDT Saturday."],["IMPACTS","Hot temperatures and high humidity may cause heat illnesses. Overnight lows in the upper 70s will provide little relief."]],
+        actions:["Drink plenty of fluids, stay in an air-conditioned room, stay out of the sun, and check up on relatives and neighbors. Take extra precautions when outside. Wear lightweight and loose-fitting clothing. Try to limit strenuous activities to early morning or evening.",
+                 "Take action when you see symptoms of heat exhaustion and heat stroke.",
+                 "To reduce risk during outdoor work, the Occupational Safety and Health Administration recommends scheduling frequent rest breaks in shaded or air-conditioned environments. Anyone overcome by heat should be moved to a cool and shaded location. Heat stroke is an emergency! Call 9 1 1."] }
+    ],
+    q:{ type:"mc", prompt:"Your director asks what you want to do first. What do you recommend?",
+      options:[
+        { text:"Pull the ER visit records and call patients to learn their ages, jobs, and what they were doing when symptoms started.", correct:true,
+          fb:"You don't know yet whether this is a workplace problem, a housing problem, or something else. Defining the problem tells you where to act.",
+          real:{ s:3, t:"Nationally, heat-related ER visit rates are often highest among men aged 26–54, not the group most people picture first." } },
+        { text:"Send a heat-safety reminder to every employer in the county about water, rest, and shade before the week gets hotter.", cost:{days:1,visits:2},
+          fb:"Reasonable, but it assumes this is a workplace problem. The voicemail mentions only two landscapers, and you haven't confirmed who is getting sick." },
+        { text:"Extend cooling center hours for older adults and people without air conditioning, since heat waves usually hit them the hardest.", cost:{days:1,visits:2},
+          fb:"That's a standard heat response, but nothing in these documents points to older adults yet. The voicemail describes younger working men." },
+        { text:"Post heat-illness warning signs on the county's social media and ask local news stations to share them today.", cost:{days:1,visits:2},
+          fb:"Awareness can help, but it's a general message aimed at no one in particular. Find out who is getting sick first, then target the response." }
+      ]
+    }
+  },
+  /* ---------------- TUESDAY ---------------- */
+  {
+    id:"s2", phase:1, fn:"Assessment", title:"Tuesday: Choose your evidence",
+    lead:"You and your coworker have one day before the director's briefing. There's time to review three sources, not all five.",
+    q:{ type:"pick", n:3, prompt:"Which three sources will you review?",
+      options:[
+        { id:"a", key:true,  label:"ER visit records", desc:"Age, sex, time of visit, zip code, and occupation for all 11 patients",
+          fb:"Strong pick. It shows who is getting sick, and when." },
+        { id:"b", key:true,  label:"Phone interviews with patients", desc:"What they were doing, where, and for how long before symptoms started",
+          fb:"Strong pick. Only interviews tell you what people were doing when they got sick." },
+        { id:"c", key:false, ok:true, label:"Hourly heat index data", desc:"Temperature and humidity for each day of the heat wave",
+          fb:"Useful context. It confirms when heat peaked, but everyone in the county had the same weather." },
+        { id:"d", key:false, label:"Power outage reports", desc:"Neighborhoods that lost electricity and air conditioning this week",
+          fb:"Outages matter in heat waves, but they point to people at home. Your early signals describe people at work." },
+        { id:"e", key:false, label:"Nursing home incident reports", desc:"Falls and illness reports from the county's long-term care facilities",
+          fb:"A common assumption is that heat waves mainly affect older adults. That's true in many heat waves, but nothing here points to them yet." }
+      ],
+      missCost:{days:1,visits:2},
+      missFb:"The briefing is tomorrow, and you still can't say who is getting sick or what they were doing. Swap in the sources that answer who and what."
+    }
+  },
+  {
+    id:"s3", phase:1, fn:"Assessment", title:"Tuesday, 4:30 PM: What you found",
+    docs:[
+      { type:"table", tag:"data", tagText:"Findings", meta:"ER records + patient interviews · 11 patients",
+        title:"Summary of the 11 heat-related ER visits",
+        head:["Finding","Count"],
+        rows:[["Men","10 of 11"],["Ages 19 to 52 (median 31)","10 of 11"],["Worked outdoors (roofing, construction, landscaping)","9 of 11"],["Of those 9: on the job 5 days or less, or back after a week off","7 of 9"],["Symptoms started between 1 PM and 6 PM","9 of 11"],["Not workers: a 78-year-old woman at home without AC; a 24-year-old after pickup basketball","2 of 11"]],
+        summary:"Most patients were men working outdoors, most were new or returning to the job, and most got sick in the afternoon. Two cases don't fit the pattern." }
+    ],
+    q:{ type:"builder", prompt:"Build the problem statement for tomorrow's briefing.",
+      template:["Heat-related illness in Cedar Valley County is concentrated among ","{0}",", ","{1}",", especially ","{2}",", during ","{3}","."],
+      groups:[
+        { label:"Who", options:[
+          { text:"outdoor workers, mostly men", correct:true },
+          { text:"adults over 65", fb:"Only 1 of 11 patients was over 65." },
+          { text:"residents without air conditioning", fb:"Only 1 of 11 patients was at home without AC." },
+          { text:"all residents equally", fb:"The data shows a clear pattern. 9 of 11 worked outdoors." } ] },
+        { label:"Where", options:[
+          { text:"at outdoor job sites", correct:true },
+          { text:"at home", fb:"Most were at work when symptoms started." },
+          { text:"at recreational events", fb:"Only one case happened during recreation." } ] },
+        { label:"Especially", options:[
+          { text:"those new to the job or returning after time off", correct:true },
+          { text:"those with chronic health conditions", fb:"The findings don't mention chronic conditions. Stick to what the evidence shows." },
+          { text:"those who were not drinking enough water", fb:"That's a guess about a cause, not a pattern in the data. The data points to time on the job." } ] },
+        { label:"When", options:[
+          { text:"afternoon hours", correct:true },
+          { text:"overnight hours", fb:"9 of 11 got sick between 1 PM and 6 PM." },
+          { text:"weekends", fb:"The findings show time of day, not day of week." } ] }
+      ],
+      cost:{days:0,visits:1},
+      fb:"A strong problem statement names who, where, and when, and it tells the team where to look next. The two cases that don't fit still matter, but they aren't the pattern.",
+      real:{ s:0, t:"OSHA reports that almost half of heat-related worker deaths happen on the first day on the job, and over 70% in the first week." }
+    }
+  },
+  /* ---------------- THURSDAY ---------------- */
+  {
+    id:"s4", phase:2, fn:"Assessment", title:"Thursday: Site visit",
+    lead:"You and the environmental health specialist visit a roofing job where two of the patients work.",
+    docs:[
+      { type:"photo", tagText:"Site photo", meta:"Environmental health specialist · 2:05 PM", src:"img/worker-site.jpg",
+        alt:"A young roofing worker sits on a sunny roof with no shade, flushed and sweating heavily, one hand on his forehead.",
+        caption:"Crew member found sitting on the roof, flushed and dizzy. No shade structure; nearest water is on the truck at the street." },
+      { type:"voicemail", kind:"memo", person:"worker", caller:"Site interview: roofing crew member", number:"Recorded by environmental health specialist", date:"Thu, Jul 16 · 2:10 PM", audio:"audio/03-interview-worker.mp3",
+        body:["I started Monday. They put me on a full ten-hour day right away. By two o'clock I was dizzy and threw up behind the dumpster.",
+              "The water's in the cooler on the truck, down at the street. No shade on a roof. We're paid by the job, so if you stop, the whole crew loses money.",
+              "I had a stomach bug last week, too. I didn't want to say anything. I just started here, and I need this job."] },
+      { type:"notes", person:"ehs", tag:"notes", tagText:"Field notes", meta:"Environmental health specialist",
+        items:["Heat index at 2 PM: 103°F","Crew of 8; 3 started this week","Water cooler on truck, about a 5-minute walk from the work area","No shade structure on the roof","Crew is paid per completed job, not per hour","Veteran crew members report no symptoms"] }
+    ],
+    q:{ type:"sort", prompt:"Sort each factor using the agent–host–environment model.",
+      cats:["Agent","Host","Environment"],
+      items:[
+        { text:"Heat index of 103°F", cat:0, fb:"Heat is the agent, the thing causing harm." },
+        { text:"Third day on the job; body hasn't adjusted to the heat", cat:1, fb:"This is about the person's body, so it's a host factor." },
+        { text:"Recovering from a stomach bug the week before", cat:1, fb:"Recent illness affects the person's body and hydration. That's a host factor." },
+        { text:"Water cooler a 5-minute walk from the work area", cat:2, fb:"Where the water is kept is a condition around the person. That's environment." },
+        { text:"No shade on the roof", cat:2, fb:"Physical surroundings are environment." },
+        { text:"Crew paid per job, so breaks cost everyone money", cat:2, fb:"This one is tricky. It shapes behavior, but pay structure is a social and economic condition around the person, so it's environment." }
+      ],
+      cost:{days:0,visits:1},
+      fb:"Most real problems have several causes working together. Every factor you sorted is a place the team could step in.",
+      real:{ s:5, t:"OSHA has noted that fear of retaliation and lost wages keep many workers from reporting heat illness, which is one reason official counts run low." }
+    }
+  },
+  {
+    id:"s5", phase:2, fn:"Assessment", title:"Thursday, 3:00 PM: The supervisor weighs in",
+    docs:[
+      { type:"quote", person:"supervisor", audio:"audio/04-supervisor-water.mp3", body:["I hear you. These guys just need to drink more water. I'll buy everybody a bigger water bottle. That fixes it, right?"] }
+    ],
+    q:{ type:"mc", prompt:"Based on what you found on site, what's the strongest reply?",
+      options:[
+        { text:"Bigger bottles help, but the data points to new workers. They need a lighter first week, with water and shade close by.", correct:true,
+          fb:"You acknowledged the idea and redirected to the biggest risk in the evidence: new workers whose bodies haven't adjusted, working far from water and shade.",
+          real:{ s:0, t:"OSHA and NIOSH recommend new workers start at no more than 20% of a normal shift in the heat on day one, adding 20% each day." } },
+        { text:"Agree. Dehydration causes heat illness, so making it easier for the crew to carry more water should solve the problem fast.", cost:{days:1,visits:2},
+          fb:"Water matters, but veteran workers on this crew drank the same water and stayed well. The difference was time on the job." },
+        { text:"Suggest the crew start at 6 AM so they finish before the hottest part of the afternoon each day this week.", cost:{days:1,visits:1},
+          fb:"This is a good idea and worth keeping. But new workers would still work full shifts from day one, and they're 7 of the 9 cases." },
+        { text:"Recommend heat-illness training for the whole crew so everyone can recognize early symptoms and speak up right away.", cost:{days:1,visits:1},
+          fb:"Useful, but it catches illness after it starts. It doesn't change the conditions that are making new workers sick." }
+      ]
+    }
+  },
+  /* ---------------- FRIDAY ---------------- */
+  {
+    id:"s6", phase:3, fn:"Policy development", title:"Friday: Build the response plan",
+    lead:"Two emails arrive before your planning meeting.",
+    docs:[
+      { type:"email", person:"provider", fromName:"Nurse Practitioner, Northside Urgent Care", fromAddr:"np.oncall@northsideuc.org",
+        to:"me", date:"Fri, Jul 17, 2026, 8:05 AM", subject:"Follow-up on heat cases",
+        body:["Hi,","One of the roofers is still in the hospital. Two others went back to work the next day and came back in dizzy.","Please make sure your plan covers people who've already been sick, not just future cases."],
+        sig:["Nurse Practitioner","Northside Urgent Care","(937) 555-0143"] },
+      { type:"email", person:"supervisor", fromName:"Site Supervisor, Halvorsen Roofing", fromAddr:"site.supervisor@halvorsenroofing.com",
+        to:"me", cc:"Public Health Director", date:"Fri, Jul 17, 2026, 9:30 AM", subject:"RE: Heat plan",
+        body:["I'll work with you, but I can't have every crew sitting in the shade half the day.","Give me the four things that matter most."],
+        sig:["Site Supervisor","Halvorsen Roofing & Exteriors","Sent from my phone"],
+        quoted:{ head:"On Thu, Jul 16, 2026 at 4:48 PM, Cedar Valley County Health District wrote:", body:"Thank you for walking the site with us today. We'll send a short heat plan tomorrow for your review." } }
+    ],
+    q:{ type:"pick", n:4, prompt:"Choose the four actions for the plan. It needs to fit the evidence and cover people at risk now, people who could get sick early, and people who already have.",
+      options:[
+        { id:"1", key:true, label:"Gradual first week for new and returning workers", desc:"20% of a normal shift in the heat on day one, adding 20% each day",
+          fb:"Directly targets the biggest risk in the data. This is primary prevention." },
+        { id:"2", key:true, label:"Water and shade within a short walk, with more breaks as heat rises", desc:"Rest schedule tied to the heat index",
+          fb:"Fixes the environmental factors you found on site. This is primary prevention." },
+        { id:"3", key:true, label:"Train supervisors and a buddy on each crew to spot early symptoms", desc:"Move a worker to shade, cool them, and call for help if needed",
+          fb:"Catches heat exhaustion before it becomes heat stroke. This is secondary prevention." },
+        { id:"4", key:true, label:"Medical clearance and gradual return for workers who got sick", desc:"No full shift in the heat right after an ER visit",
+          fb:"Responds to the provider's email: two workers got sick again. This is tertiary prevention." },
+        { id:"5", key:false, label:"Countywide heat-safety billboard campaign", desc:"Reaches every driver in the county",
+          fb:"Broad reach, but it's not aimed at the people or conditions in your data." },
+        { id:"6", key:false, label:"Free blood pressure screenings at job sites", desc:"Early detection at the workplace",
+          fb:"It sounds like secondary prevention, and it is, but for a different health problem. It doesn't catch heat illness." },
+        { id:"7", key:false, label:"Extend cooling center hours countywide", desc:"More access to air conditioning",
+          fb:"It would help residents like the 78-year-old patient, but it doesn't reach workers on a roof at 2 PM." },
+        { id:"8", key:false, label:"Heat-safety acknowledgment form for every worker", desc:"Workers sign that they understand the risks",
+          fb:"Paperwork puts the responsibility on workers without changing their conditions." }
+      ],
+      missCost:{days:1,visits:1},
+      missFb:"Check your plan against the evidence and the provider's email. Does it cover all three levels of prevention?",
+      fb:"Your plan matches the evidence and covers all three levels: preventing illness, catching it early, and supporting recovery."
+    }
+  },
+  {
+    id:"s7", phase:3, fn:"Policy development", title:"Friday: Quick check before the meeting",
+    q:{ type:"mc", prompt:"Your director asks which part of the plan is secondary prevention. What do you say?",
+      options:[
+        { text:"Training supervisors and a buddy on each crew to spot early symptoms and respond.", correct:true,
+          fb:"Secondary prevention catches a problem early, after it starts but before it gets serious. Heat exhaustion caught early doesn't become heat stroke.",
+          real:{ s:1, t:"OSHA lists early heat exhaustion signs as dizziness, nausea, heavy sweating, thirst, and irritability. Confusion or slurred speech signals heat stroke: call 911." } },
+        { text:"The gradual first week, because it helps new workers early in their employment, before problems build.",
+          fb:"It happens early in the job, but it stops illness before it starts. That makes it primary prevention. Timing means the timing of the illness, not the job." },
+        { text:"Medical clearance, because it screens workers before they return to full duty.",
+          fb:"It involves a medical check, but it's for people who already got sick, so it's tertiary: preventing it from happening again or getting worse." },
+        { text:"Water and shade close by, because it responds to the heat as it's happening.",
+          fb:"It keeps illness from starting in the first place. That's primary prevention." }
+      ]
+    }
+  },
+  /* ---------------- NEXT MONTH ---------------- */
+  {
+    id:"s8", phase:4, fn:"Policy development", title:"Next month: Contractors' association meeting",
+    lead:"The heat wave is over. The county contractors' association has asked the health district for a recommendation before next summer.",
+    docs:[
+      { type:"quote", person:"supervisor", audio:"audio/05-supervisor-meeting.mp3", body:["Half the room thinks this is overkill. The other half wants something simple they can actually follow. What are you asking us to vote on?"] }
+    ],
+    q:{ type:"mc", prompt:"Which recommendation is strongest?",
+      options:[
+        { text:"Every member company adopts a written heat plan: a gradual first week, water, shade, rest, and a trained responder.", correct:true,
+          fb:"That's policy development: turning evidence into a shared standard people can follow and be held to." },
+        { text:"Member companies sign a voluntary pledge to follow heat-safety best practices whenever the weather service issues a heat advisory.",
+          fb:"Voluntary pledges are easy to pass, but the companies with the biggest gaps are the least likely to follow through." },
+        { text:"Wait for the federal OSHA heat standard to be finalized, then require every member company to follow it from that point on.",
+          fb:"OSHA proposed a federal heat rule in 2024, but it isn't final. Waiting leaves workers unprotected next summer.",
+          real:{ s:4, t:"OSHA published its proposed heat rule in August 2024 and held hearings in 2025. As of this writing, it has not been finalized." } },
+        { text:"Require a heat-illness poster in English and Spanish at every job site during the summer months.",
+          fb:"Posters build awareness, but they don't change schedules, water access, or how new workers start." }
+      ]
+    }
+  },
+  {
+    id:"s9", phase:4, fn:"Assurance", title:"Next month: Making it stick",
+    lead:"The association votes yes. Now the health district has to make sure the plan actually happens.",
+    q:{ type:"mc", prompt:"Which follow-up tells you most clearly that the plan is working on job sites?",
+      options:[
+        { text:"Companies submit a signed form each spring confirming they've adopted the heat plan and trained their supervisors on it.",
+          fb:"A form shows intent, not practice. Companies can sign and still send a new worker up for a full shift." },
+        { text:"Unannounced site checks during heat advisories, plus reviewing any heat-related ER visits among workers.", correct:true,
+          fb:"That's assurance: checking the plan in the real conditions it's meant for, and watching the health outcome it's supposed to change." },
+        { text:"A survey asking workers whether they've heard of the heat plan and know where to find it on their job site.",
+          fb:"Awareness is a start, but knowing about a plan isn't the same as having water and shade on the roof." },
+        { text:"The association posts the plan on its website and features it in the summer newsletter.",
+          fb:"That spreads the word, but nothing confirms it's happening on site." }
+      ]
+    }
+  },
+  /* ---------------- NEXT SUMMER ---------------- */
+  {
+    id:"s10", phase:5, fn:"Assessment", title:"Next summer: Did it work?",
+    docs:[
+      { type:"table", tag:"data", tagText:"Dashboard", meta:"Epidemiologist · End of August",
+        title:"Heat-related ER visits, Cedar Valley County",
+        head:["Measure","Last summer","This summer"],
+        rows:[["Heat advisory days","4","11"],["Total heat-related ER visits","13","16"],["Visits among outdoor workers","9","4"],["Heat stroke among workers","1","0"],["Visits among non-workers","4","12"]],
+        summary:"This summer had nearly three times as many heat advisory days. Total visits rose from 13 to 16, worker visits fell from 9 to 4, and non-worker visits rose from 4 to 12." },
+      { type:"quote", person:"epi", audio:"audio/06-epi-commissioner.mp3", body:["A county commissioner just saw \"16 versus 13\" and says the plan failed. Can you help me answer her?"] }
+    ],
+    q:{ type:"mc", prompt:"What's the best response to the commissioner?",
+      options:[
+        { text:"She's right. Total visits went up, so the plan didn't work and the association should revise it.",
+          fb:"The total mixes two groups, and the plan only targeted one. Look at worker visits, and at how many hot days there were." },
+        { text:"There were nearly three times as many advisory days, and worker visits still fell from 9 to 4.", correct:true,
+          fb:"You compared the outcome the plan targeted, in the group it targeted, and accounted for how hot the summer was. A hotter summer makes any plan look worse on raw totals." },
+        { text:"No workers died this summer, which shows the heat plan was a success.",
+          fb:"Deaths are rare, so they're a weak measure on their own. Use the ER visit data." },
+        { text:"It's too soon to judge. Wait several more summers before looking at any of the numbers.",
+          fb:"More years help, but you already have useful evidence. Waiting can also hide a new problem." }
+      ]
+    }
+  },
+  {
+    id:"s11", phase:5, fn:"Assessment", title:"Next summer: What happens next",
+    docs:[
+      { type:"quote", person:"epi", audio:"audio/07-epi-next.mp3", body:["One more thing. Of the 4 worker visits, 3 were at companies outside the association. And non-worker visits tripled."] }
+    ],
+    q:{ type:"mc", prompt:"What should the team do next?",
+      options:[
+        { text:"Close the case. The worker plan did what it was designed to do, and the heat season is over.",
+          fb:"The plan helped, but the dashboard just showed you a new problem. Closing the case now misses it." },
+        { text:"Expand the worker heat plan to every industry in the county before next summer.",
+          fb:"That's a big step without evidence. You don't know yet who the non-worker cases are or why they rose." },
+        { text:"Investigate the rise in non-worker visits and how to reach companies outside the association.", correct:true,
+          fb:"Evaluation feeds back into assessment. New data means new questions, so the cycle starts again. Public health doesn't move in a straight line." },
+        { text:"Shift the health district's heat resources from workers to non-workers, since that's where visits rose.",
+          fb:"Dropping what's working would likely bring worker cases back. Investigate the new problem without abandoning the old one." }
+      ]
+    }
+  }
+];
+
+const DEBRIEF = {
+  audio:"audio/08-debrief-director.mp3",
+  text:["You started with an automated alert and a voicemail. A year later, you're asking new questions. That's the public health approach working the way it's supposed to."],
+  closing:"You didn't start with a solution. You defined the problem, found what was driving it, matched prevention to the people at risk, turned it into policy, made sure it happened, and checked the results."
+};
+
+/* =====================================================================
+   ENGINE
+   ===================================================================== */
+const KEY = "heatAdvisoryCase_v1";
+const app = document.getElementById("app");
+let state = load() || fresh();
+function fresh(){ return { started:false, step:0, days:0, visits:0, firstTry:{}, done:false }; }
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)); }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shuffle = a => { const r=a.slice(); for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];} return r; };
+
+function avatar(key, size){
+  const p = PEOPLE[key]; const cls = "avatar" + (size ? " "+size : "");
+  const img = p.image ? `<img src="${esc(p.image)}" alt="" onerror="this.remove()">` : "";
+  return `<div class="${cls}" style="background:${p.color}"><span aria-hidden="true" style="position:absolute">${esc(p.initials)}</span>${img}</div>`;
+}
+function person(key){
+  const p = PEOPLE[key];
+  return `<div class="person">${avatar(key)}<div class="who">${esc(p.name)}<small>${esc(p.sub)}</small></div></div>`;
+}
+function realNote(r){
+  if(!r) return "";
+  const s = SOURCES[r.s];
+  return `<div class="real"><b>Real-world data:</b> ${esc(r.t)} <a href="${esc(s.u)}" target="_blank" rel="noopener">Source [${r.s+1}]</a></div>`;
+}
+function costTag(c){
+  if(!c || (!c.days && !c.visits)) return "";
+  const parts=[]; if(c.days) parts.push(`+${c.days} day${c.days>1?"s":""}`); if(c.visits) parts.push(`+${c.visits} ER visit${c.visits>1?"s":""}`);
+  return `<span class="cost">⏱ ${parts.join(" · ")}</span>`;
+}
+function applyCost(c){
+  if(!c) return;
+  state.days += c.days||0; state.visits += c.visits||0; save(); updateStatus(true);
+}
+
+/* ---------- documents ---------- */
+let uid = 0;
+function player(src, label){
+  if(!src) return "";
+  return `<div class="player" data-src="${esc(src)}" hidden>
+    <button type="button" class="pl-btn" aria-label="Play ${esc(label)}"><span aria-hidden="true">▶</span></button>
+    <input type="range" class="pl-seek" min="0" max="1000" value="0" aria-label="Seek ${esc(label)}">
+    <span class="pl-time">0:00</span></div>`;
+}
+function chartSVG(c){
+  const max = Math.max(...c.bars.map(b=>b.v), c.expected)+1, W=360, H=170, pad=30, bw=(W-pad*2)/c.bars.length;
+  const y = v => H-24 - (v/max)*(H-44);
+  const bars = c.bars.map((b,i)=>{ const x=pad+i*bw+bw*0.2, w=bw*0.6; return `<rect x="${x}" y="${y(b.v)}" width="${w}" height="${H-24-y(b.v)}" rx="4" fill="#d9591f"/><text x="${x+w/2}" y="${y(b.v)-6}" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2937">${b.v}</text><text x="${x+w/2}" y="${H-8}" text-anchor="middle" font-size="12" fill="#5b6574">${esc(b.l)}</text>`; }).join("");
+  const ey = y(c.expected);
+  return `<div class="chart"><div class="chart-title">${esc(c.title)}</div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.summary)}"><line x1="${pad}" x2="${W-pad}" y1="${H-24}" y2="${H-24}" stroke="#cfc6b8"/>${bars}
+    <line x1="${pad}" x2="${W-pad}" y1="${ey}" y2="${ey}" stroke="#1b2a41" stroke-dasharray="5 4" stroke-width="1.5"/></svg>
+    <span class="legend"><i></i> Expected for early July (about ${c.expected} per day)</span>
+    <p class="chart-summary">${esc(c.summary)}</p></div>`;
+}
+function docHTML(d){
+  const id = "d"+(uid++);
+  if(d.type==="email"){
+    const av = d.automated ? `<div class="avatar" style="background:#5b6574"><span aria-hidden="true" style="position:absolute;font-size:20px">🔔</span></div>` : avatar(d.person);
+    return `<article class="mail" aria-label="Email: ${esc(d.subject)}">
+      <div class="mail-bar" aria-hidden="true"><span>Inbox</span><span class="mail-icons">↩ &nbsp;↪ &nbsp;🗑</span></div>
+      <h3 class="mail-subject">${esc(d.subject)}</h3>
+      <div class="mail-head">${av}
+        <div class="mail-from"><div><strong>${esc(d.fromName)}</strong> <span class="addr">&lt;${esc(d.fromAddr)}&gt;</span></div>
+          <div class="mail-to">to ${esc(d.to)}${d.cc?` · cc ${esc(d.cc)}`:""}</div></div>
+        <div class="mail-date">${esc(d.date)}</div></div>
+      <div class="mail-body">${d.body.map(t=>`<p>${esc(t)}</p>`).join("")}
+        ${d.chart?chartSVG(d.chart):""}
+        ${d.details?`<table class="mail-details">${d.details.map(r=>`<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td></tr>`).join("")}</table>`:""}
+        ${d.sig?`<div class="mail-sig">${d.sig.map(esc).join("<br>")}</div>`:""}
+        ${d.quoted?`<div class="mail-quote"><div>${esc(d.quoted.head)}</div><blockquote>${esc(d.quoted.body)}</blockquote></div>`:""}
+        ${d.footer?`<p class="mail-footer">${esc(d.footer)}</p>`:""}
+      </div>
+      <div class="mail-actions" aria-hidden="true"><span>↩ Reply</span><span>↪ Forward</span></div>
+    </article>`;
+  }
+  if(d.type==="voicemail"){
+    const memo = d.kind==="memo";
+    return `<article class="vm" aria-label="${memo?"Recorded interview":"Voicemail"} from ${esc(d.caller)}">
+      <div class="vm-top"><span class="doc-tag voice">${memo?"Voice memo":"Voicemail"}</span><span class="vm-date">${esc(d.date)}</span></div>
+      <div class="vm-caller">${avatar(d.person)}<div><strong>${esc(d.caller)}</strong><small>${esc(d.number)}</small></div></div>
+      ${player(d.audio, memo?"interview":"voicemail")}
+      <div class="vm-trans"><div class="vm-label">${memo?"Transcript":"Transcription"}</div>${d.body.map(t=>`<p>${esc(t)}</p>`).join("")}</div>
+    </article>`;
+  }
+  if(d.type==="advisory"){
+    return `<article class="nws" aria-label="Weather Service heat advisory">
+      <div class="nws-head"><span class="nws-badge">Heat Advisory</span><span class="nws-meta">National Weather Service · ${esc(d.area)}</span></div>
+      <pre class="nws-text" tabindex="0" aria-label="Full advisory text">URGENT - WEATHER MESSAGE
+National Weather Service
+${esc(d.issued)}
+
+${esc(d.area)}-
+${esc(d.issued)}
+
+${esc(d.headline)}
+
+${d.bullets.map(b=>`* ${esc(b[0])}...${esc(b[1])}`).join("\n\n")}
+
+PRECAUTIONARY/PREPAREDNESS ACTIONS...
+
+${d.actions.map(esc).join("\n\n")}
+
+&amp;&amp;</pre></article>`;
+  }
+  if(d.type==="photo"){
+    return `<div class="doc"><div class="doc-head"><span class="doc-tag notes">${esc(d.tagText)}</span><span class="doc-meta">${esc(d.meta)}</span></div>
+      <figure class="photo"><img src="${esc(d.src)}" alt="${esc(d.alt)}" onerror="this.closest('figure').classList.add('missing')"><div class="ph-missing" aria-hidden="true">Site photo: add ${esc(d.src)}</div>
+      <figcaption>${esc(d.caption)}</figcaption></figure></div>`;
+  }
+  if(d.type==="notes"){
+    return `<div class="doc"><div class="doc-head"><span class="doc-tag notes">${esc(d.tagText)}</span><span class="doc-meta">${esc(d.meta)}</span></div>
+      <div class="doc-body">${d.person?`<div style="margin-bottom:12px">${person(d.person)}</div>`:""}<ul>${d.items.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div></div>`;
+  }
+  if(d.type==="table"){
+    return `<div class="doc"><div class="doc-head"><span class="doc-tag data">${esc(d.tagText)}</span><span class="doc-meta">${esc(d.meta)}</span></div>
+      <div class="doc-body"><h3>${esc(d.title)}</h3><div class="table-scroll"><table class="data"><thead><tr>${d.head.map((h,i)=>`<th class="${i?"num":""}">${esc(h)}</th>`).join("")}</tr></thead>
+      <tbody>${d.rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${i?"num":""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <p class="chart-summary">${esc(d.summary)}</p></div></div>`;
+  }
+  if(d.type==="quote"){
+    return `<div class="guide">${avatar(d.person,"")}<div class="bubble"><div class="role">${esc(PEOPLE[d.person].name)}</div>${d.body.map(t=>`<p>${esc(t)}</p>`).join("")}${player(d.audio, PEOPLE[d.person].name)}</div></div>`;
+  }
+  return "";
+}
+
+/* audio players: show only when the file loads */
+let current = null;
+const fmt = t => isFinite(t) ? `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}` : "0:00";
+function initPlayers(root){
+  root.querySelectorAll(".player").forEach(el => {
+    const a = new Audio(); a.preload = "metadata";
+    const btn = el.querySelector(".pl-btn"), seek = el.querySelector(".pl-seek"), time = el.querySelector(".pl-time");
+    a.addEventListener("loadedmetadata", () => { el.hidden = false; time.textContent = fmt(a.duration); });
+    a.addEventListener("timeupdate", () => { if(a.duration){ seek.value = Math.round(a.currentTime/a.duration*1000); time.textContent = `${fmt(a.currentTime)} / ${fmt(a.duration)}`; } });
+    a.addEventListener("ended", () => { btn.firstElementChild.textContent = "▶"; btn.setAttribute("aria-label", btn.getAttribute("aria-label").replace("Pause","Play")); });
+    btn.onclick = () => {
+      if(a.paused){ if(current && current!==a) current.pause(); current = a; a.play(); btn.firstElementChild.textContent = "❚❚"; btn.setAttribute("aria-label", btn.getAttribute("aria-label").replace("Play","Pause")); }
+      else { a.pause(); btn.firstElementChild.textContent = "▶"; btn.setAttribute("aria-label", btn.getAttribute("aria-label").replace("Pause","Play")); }
+    };
+    a.addEventListener("pause", () => { btn.firstElementChild.textContent = "▶"; });
+    seek.oninput = () => { if(a.duration) a.currentTime = seek.value/1000*a.duration; };
+    /* try audio/ first, then "source audio/", plus the original voicemail file name */
+    const file = el.dataset.src.split("/").pop();
+    const names = [file]; if(file==="02-voicemail-np.mp3") names.push("02-voicemail-n.mp3");
+    const tries = [];
+    ["audio/","source audio/","source%20audio/","Source Audio/","source_audio/","source-audio/"].forEach(f => names.forEach(n => tries.push(f+n)));
+    let i = 0;
+    a.addEventListener("error", () => { i++; if(i < tries.length) a.src = tries[i]; });
+    a.src = tries[0];
+  });
+}
+
+/* ---------- status ---------- */
+function updateStatus(bump){
+  const bar = document.getElementById("statusbar");
+  bar.hidden = !state.started;
+  const cur = state.done ? PHASES.length-1 : (STEPS[state.step] ? STEPS[state.step].phase : PHASES.length-1);
+  document.getElementById("timeline").innerHTML = PHASES.map((p,i)=>`<li class="${i<cur?"done":i===cur?"now":""}" ${i===cur?'aria-current="step"':""}>${esc(p)}</li>`).join("");
+  const cd = document.getElementById("chipDays"), cv = document.getElementById("chipVisits");
+  cd.innerHTML = `Time lost: <b>${state.days} day${state.days===1?"":"s"}</b>`;
+  cv.innerHTML = `Extra ER visits: <b>${state.visits}</b>`;
+  if(bump){ [cd,cv].forEach(c=>{c.classList.remove("bump"); void c.offsetWidth; c.classList.add("bump");}); }
+}
+
+function render(html){
+  if(current){ current.pause(); current = null; }
+  app.innerHTML = `<div class="screen">${html}</div>`;
+  initPlayers(app);
+  app.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
+    const el = document.getElementById(b.dataset.toggle); el.hidden = !el.hidden;
+    b.textContent = el.hidden ? "Show transcript" : "Hide transcript"; b.setAttribute("aria-expanded", String(!el.hidden));
+  }));
+  updateStatus(false);
+  app.focus({preventScroll:true}); window.scrollTo({top:0});
+  try{ document.querySelector(".wrap").scrollIntoView({block:"start"}); }catch(e){}
+}
+
+/* ---------- screens ---------- */
+function showIntro(){
+  render(`<section class="card stack">
+    <div class="eyebrow">Putting it together · The public health approach</div>
+    <h1>Heat Advisory</h1>
+    <div class="guide">${avatar("director","lg")}<div class="bubble"><div class="role">${esc(PEOPLE.director.name)}</div>${INTRO.text.map(t=>`<p>${esc(t)}</p>`).join("")}
+      ${player(INTRO.audio, "welcome message")}</div></div>
+    <p class="muted" style="font-size:14px">Cedar Valley County and its data are fictional. The patterns and "Real-world data" notes come from OSHA, CDC, and CPWR. See the <button type="button" class="inline-link" id="introSrc">Sources page</button>.</p>
+    <div class="actions"><button class="btn" id="go" type="button">Open the case file →</button></div>
+  </section>`);
+  document.getElementById("introSrc").onclick = showSources;
+  document.getElementById("go").onclick = () => { state.started = true; state.step = 0; save(); showStep(); };
+}
+
+function showStep(){
+  if(state.step >= STEPS.length){ state.done = true; save(); return showDebrief(); }
+  const S = STEPS[state.step];
+  const docs = S.docs ? `<div class="docs">${S.docs.map(docHTML).join("")}</div>` : "";
+  render(`<section class="card stack">
+    <div><div class="eyebrow">${esc(PHASES[S.phase])} · ${esc(S.fn)}</div><h2>${esc(S.title)}</h2>${S.lead?`<p class="muted" style="margin:0">${esc(S.lead)}</p>`:""}</div>
+    ${docs}
+    <div class="qbox" id="qbox"></div>
+  </section>`);
+  const box = document.getElementById("qbox");
+  ({mc:mcQ, pick:pickQ, builder:builderQ, sort:sortQ})[S.q.type](S, box);
+}
+
+function nextBtn(box, S){
+  const acts = document.createElement("div"); acts.className = "actions";
+  const last = state.step === STEPS.length-1;
+  acts.innerHTML = `<button class="btn" type="button">${last?"See the after-action review →":"Continue →"}</button>`;
+  box.appendChild(acts);
+  const b = acts.querySelector("button"); b.onclick = () => { state.step++; save(); showStep(); }; b.focus();
+}
+function markFirst(S, ok){ if(state.firstTry[S.id]===undefined){ state.firstTry[S.id]=ok; save(); } }
+
+/* multiple choice */
+function mcQ(S, box){
+  const Q = S.q, L="ABCD"; const order = shuffle(Q.options.map((_,k)=>k));
+  box.innerHTML = `<div class="qlabel">Decision</div><h3 id="qp">${esc(Q.prompt)}</h3>
+    <div class="options" role="group" aria-labelledby="qp">${order.map((k,pos)=>`<button type="button" class="opt" data-k="${k}"><span class="dot" aria-hidden="true">${L[pos]}</span><span>${esc(Q.options[k].text)}</span></button>`).join("")}</div>
+    <div class="feedback" id="fb" aria-live="polite"></div>`;
+  let tries=0; const fb = box.querySelector("#fb");
+  box.querySelectorAll(".opt").forEach(btn => btn.onclick = () => {
+    const o = Q.options[+btn.dataset.k]; tries++;
+    if(o.correct){
+      markFirst(S, tries===1);
+      btn.classList.add("correct"); box.querySelectorAll(".opt").forEach(b=>b.disabled=true);
+      fb.innerHTML = `<div class="fb-card good"><div class="fb-title">${esc(PEOPLE.director.name)} · ${tries===1?"Good call":"That's the stronger move"}</div><p style="margin:0">${esc(o.fb)}</p>${realNote(o.real)}</div>`;
+      nextBtn(box, S);
+    } else {
+      markFirst(S, false);
+      btn.classList.add("tried"); btn.disabled = true; applyCost(o.cost);
+      fb.innerHTML = `<div class="fb-card try"><div class="fb-title">What happens</div><p style="margin:0">${esc(o.fb)}</p>${costTag(o.cost)}<p style="margin:8px 0 0;font-size:14px">Choose again.</p></div>`;
+    }
+  });
+}
+
+/* pick N */
+function pickQ(S, box){
+  const Q = S.q; let sel = new Set(); const order = shuffle(Q.options);
+  box.innerHTML = `<div class="qlabel">Choose ${Q.n}</div><h3 id="qp">${esc(Q.prompt)}</h3>
+    <div class="options" role="group" aria-labelledby="qp">${order.map(o=>`<button type="button" class="opt" data-id="${o.id}" aria-pressed="false"><span class="dot" aria-hidden="true">✓</span><span><strong>${esc(o.label)}</strong><span class="desc">${esc(o.desc)}</span></span></button>`).join("")}</div>
+    <div class="counter-note" id="cnt">0 of ${Q.n} selected</div>
+    <div class="actions"><button class="btn secondary" id="submit" type="button" disabled>Submit</button></div>
+    <div class="feedback" id="fb" aria-live="polite"></div>`;
+  const cnt = box.querySelector("#cnt"), sub = box.querySelector("#submit"), fb = box.querySelector("#fb");
+  const refresh = () => { cnt.textContent = `${sel.size} of ${Q.n} selected`; sub.disabled = sel.size !== Q.n;
+    box.querySelectorAll(".opt").forEach(b=>{ const on = sel.has(b.dataset.id); b.classList.toggle("sel", on); b.setAttribute("aria-pressed", String(on)); b.classList.remove("tried","correct"); }); };
+  box.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const id = b.dataset.id;
+    if(sel.has(id)) sel.delete(id); else if(sel.size < Q.n) sel.add(id);
+    refresh(); fb.innerHTML = "";
+  });
+  sub.onclick = () => {
+    const picked = Q.options.filter(o=>sel.has(o.id));
+    const keys = Q.options.filter(o=>o.key);
+    const ok = keys.every(k=>sel.has(k.id));
+    markFirst(S, ok);
+    const list = `<ul>${picked.map(o=>`<li><strong>${esc(o.label)}:</strong> ${esc(o.fb)}</li>`).join("")}</ul>`;
+    box.querySelectorAll(".opt").forEach(b=>{ const o = Q.options.find(x=>x.id===b.dataset.id); if(sel.has(o.id)) b.classList.add(o.key||o.ok ? "correct":"tried"); });
+    if(ok){
+      box.querySelectorAll(".opt").forEach(b=>b.disabled=true); sub.disabled = true;
+      fb.innerHTML = `<div class="fb-card good"><div class="fb-title">${esc(PEOPLE.director.name)} · Solid choices</div>${Q.fb?`<p style="margin:0">${esc(Q.fb)}</p>`:""}${list}</div>`;
+      nextBtn(box, S);
+    } else {
+      applyCost(Q.missCost);
+      fb.innerHTML = `<div class="fb-card try"><div class="fb-title">What happens</div><p style="margin:0">${esc(Q.missFb)}</p>${list}${costTag(Q.missCost)}<p style="margin:8px 0 0;font-size:14px">Change your selections and submit again.</p></div>`;
+    }
+  };
+}
+
+/* sentence builder */
+function builderQ(S, box){
+  const Q = S.q; const choice = Q.groups.map(()=>null);
+  const shuffled = Q.groups.map(g => shuffle(g.options.map((_,k)=>k)));
+  const statement = () => Q.template.map(t => { const m = t.match(/^\{(\d)\}$/); if(!m) return esc(t); const g=+m[1];
+    return choice[g]===null ? `<span class="blank">${esc(Q.groups[g].label.toLowerCase())}</span>` : `<span class="filled">${esc(Q.groups[g].options[choice[g]].text)}</span>`; }).join("");
+  box.innerHTML = `<div class="qlabel">Build it</div><h3>${esc(Q.prompt)}</h3>
+    ${Q.groups.map((g,gi)=>`<div class="group"><div class="group-label" id="g${gi}">${esc(g.label)}</div><div class="pills" role="group" aria-labelledby="g${gi}">${shuffled[gi].map(k=>`<button type="button" class="pill" data-g="${gi}" data-k="${k}" aria-pressed="false">${esc(g.options[k].text)}</button>`).join("")}</div></div>`).join("")}
+    <div class="statement" id="stmt" aria-live="polite">${statement()}</div>
+    <div class="actions"><button class="btn secondary" id="submit" type="button" disabled>Check statement</button></div>
+    <div class="feedback" id="fb" aria-live="polite"></div>`;
+  const sub = box.querySelector("#submit"), fb = box.querySelector("#fb"), stmt = box.querySelector("#stmt");
+  box.querySelectorAll(".pill").forEach(p => p.onclick = () => {
+    const g=+p.dataset.g, k=+p.dataset.k; choice[g]=k;
+    box.querySelectorAll(`.pill[data-g="${g}"]`).forEach(x=>{ x.setAttribute("aria-pressed", String(+x.dataset.k===k)); x.classList.remove("wrong","right"); });
+    stmt.innerHTML = statement(); sub.disabled = choice.some(c=>c===null); fb.innerHTML="";
+  });
+  sub.onclick = () => {
+    const wrong = Q.groups.map((g,gi)=>({g,gi})).filter(({g,gi})=>!g.options[choice[gi]].correct);
+    markFirst(S, wrong.length===0);
+    Q.groups.forEach((g,gi)=>{ const p = box.querySelector(`.pill[data-g="${gi}"][data-k="${choice[gi]}"]`); p.classList.add(g.options[choice[gi]].correct?"right":"wrong"); });
+    if(!wrong.length){
+      box.querySelectorAll(".pill").forEach(p=>p.disabled=true); sub.disabled=true;
+      fb.innerHTML = `<div class="fb-card good"><div class="fb-title">${esc(PEOPLE.director.name)} · Ready for the briefing</div><p style="margin:0">${esc(Q.fb)}</p>${realNote(Q.real)}</div>`;
+      nextBtn(box, S);
+    } else {
+      applyCost(Q.cost);
+      fb.innerHTML = `<div class="fb-card try"><div class="fb-title">Check the evidence</div><ul>${wrong.map(({g,gi})=>`<li><strong>${esc(g.label)}:</strong> ${esc(g.options[choice[gi]].fb)}</li>`).join("")}</ul>${costTag(Q.cost)}</div>`;
+    }
+  };
+}
+
+/* sort */
+function sortQ(S, box){
+  const Q = S.q; const ans = Q.items.map(()=>null); const order = shuffle(Q.items.map((_,k)=>k));
+  box.innerHTML = `<div class="qlabel">Sort</div><h3>${esc(Q.prompt)}</h3>
+    <div>${order.map(k=>`<div class="sort-row" data-row="${k}"><div class="item">${esc(Q.items[k].text)}<small hidden></small></div>
+      <div class="seg" role="group" aria-label="${esc(Q.items[k].text)}">${Q.cats.map((c,ci)=>`<button type="button" data-k="${k}" data-c="${ci}" aria-pressed="false">${esc(c)}</button>`).join("")}</div></div>`).join("")}</div>
+    <div class="actions"><button class="btn secondary" id="submit" type="button" disabled>Check</button></div>
+    <div class="feedback" id="fb" aria-live="polite"></div>`;
+  const sub = box.querySelector("#submit"), fb = box.querySelector("#fb");
+  box.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+    const k=+b.dataset.k, c=+b.dataset.c; ans[k]=c;
+    const row = box.querySelector(`[data-row="${k}"]`); row.classList.remove("wrong","right"); row.querySelector("small").hidden = true;
+    row.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.c===c)));
+    sub.disabled = ans.some(a=>a===null); fb.innerHTML="";
+  });
+  sub.onclick = () => {
+    let wrong=0;
+    Q.items.forEach((it,k)=>{ const row = box.querySelector(`[data-row="${k}"]`); const ok = ans[k]===it.cat; row.classList.add(ok?"right":"wrong");
+      const sm = row.querySelector("small"); if(!ok){ wrong++; sm.hidden=false; sm.textContent = "Not quite. Think about whether this is the cause, the person, or the surroundings."; } });
+    markFirst(S, wrong===0);
+    if(!wrong){
+      box.querySelectorAll(".seg button").forEach(b=>b.disabled=true); sub.disabled=true;
+      fb.innerHTML = `<div class="fb-card good"><div class="fb-title">${esc(PEOPLE.director.name)} · All sorted</div><p>${esc(Q.fb)}</p><ul>${Q.items.map(it=>`<li><strong>${esc(it.text)}</strong> (${esc(Q.cats[it.cat])}): ${esc(it.fb)}</li>`).join("")}</ul>${realNote(Q.real)}</div>`;
+      nextBtn(box, S);
+    } else {
+      applyCost(Q.cost);
+      fb.innerHTML = `<div class="fb-card try"><div class="fb-title">${wrong} to rethink</div><p style="margin:0">Agent = what causes harm. Host = the person's body. Environment = conditions around the person, including physical, social, and economic ones.</p>${costTag(Q.cost)}</div>`;
+    }
+  };
+}
+
+/* debrief */
+function signalComplete(){
+  /* Rise 360 code block (turn on its completion toggle) */
+  try{ window.parent.postMessage({ type: 'complete' }, '*'); }catch(e){}
+  /* Mighty Interactive HTML block (leave Autocomplete off) */
+  try{ if(window.mightyInteractiveSdk) window.mightyInteractiveSdk.markAsComplete(); }catch(e){}
+}
+function showDebrief(){
+  signalComplete();
+  const firsts = STEPS.filter(s=>state.firstTry[s.id]).length;
+  const rows = STEPS.map(s=>`<div class="aar-item"><div class="when">${esc(PHASES[s.phase])}</div><div><strong>${esc(s.title.split(": ").pop())}</strong><br><span class="fn">${esc(s.fn)}</span>
+    ${state.firstTry[s.id]?`<div class="hit">✓ Strongest call on the first try</div>`:`<div class="miss">Took more than one try. Worth revisiting.</div>`}</div></div>`).join("");
+  render(`<section class="card stack">
+    <div class="eyebrow">Wrap-up · After-action review</div>
+    <h2>From alert to action</h2>
+    <div class="guide">${avatar("director","lg")}<div class="bubble"><div class="role">${esc(PEOPLE.director.name)}</div>${DEBRIEF.text.map(t=>`<p>${esc(t)}</p>`).join("")}${player(DEBRIEF.audio, "debrief")}</div></div>
+    <div class="stat-row">
+      <div class="stat"><b>${firsts} / ${STEPS.length}</b><span>Strongest call on the first try</span></div>
+      <div class="stat"><b>${state.days}</b><span>Days lost to weaker calls</span></div>
+      <div class="stat"><b>${state.visits}</b><span>Extra ER visits while deciding</span></div>
+    </div>
+    <p><strong>${esc(DEBRIEF.closing)}</strong></p>
+    <div class="aar">${rows}</div>
+    <p class="muted" style="font-size:14px">Cedar Valley County, its people, and its case counts are fictional. The real-world data notes come from the sources on the Sources page.</p>
+    <div class="done-note" role="status">✓ Continue in your lesson when you're ready.</div>
+    <div class="actions">
+      <button class="btn secondary" id="print" type="button">Print or save this review</button>
+      <button class="btn ghost" id="srcBtn2" type="button">Sources</button>
+      <button class="btn ghost" id="again" type="button">Run the case again</button>
+    </div>
+  </section>`);
+  document.getElementById("print").onclick = () => window.print();
+  document.getElementById("again").onclick = restart;
+  document.getElementById("srcBtn2").onclick = showSources;
+}
+
+function resume(){ if(!state.started) showIntro(); else if(state.done || state.step>=STEPS.length) showDebrief(); else showStep(); }
+function showSources(){
+  render(`<section class="card stack">
+    <div class="eyebrow">Sources</div>
+    <h2>Where the real-world data comes from</h2>
+    <p>Cedar Valley County, the people in this case, and all case counts are <strong>fictional</strong> and were created for teaching. The patterns in the case and every "Real-world data" note are based on the sources below.</p>
+    <ol class="src-list">${SOURCES.map((x,i)=>`<li id="src${i+1}"><p class="apa">${x.apa} <a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.u)}</a></p><p class="used"><strong>Used for:</strong> ${esc(x.used)}</p></li>`).join("")}</ol>
+    <p class="muted" style="font-size:14px">Web sources retrieved September 25, 2026. Citations follow APA 7th edition.</p>
+    <div class="actions"><button class="btn" id="srcBack" type="button">← Back to the case</button></div>
+  </section>`);
+  document.getElementById("srcBack").onclick = resume;
+}
+
+function restart(){ state = fresh(); save(); showIntro(); }
+document.getElementById("sourcesBtn").onclick = showSources;
+document.getElementById("restartBtn").onclick = () => { if(confirm("Start over? Your progress will be cleared.")) restart(); };
+
+resume();
+</script>
+</body>
+</html>
