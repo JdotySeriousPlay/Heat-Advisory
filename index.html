@@ -1,3 +1,7 @@
+
+index-code.txt
+
+100%
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -602,7 +606,7 @@ const shuffle = a => { const r=a.slice(); for(let i=r.length-1;i>0;i--){const j=
 
 function avatar(key, size){
   const p = PEOPLE[key]; const cls = "avatar" + (size ? " "+size : "");
-  const img = p.image ? `<img src="${esc(p.image)}" alt="" onerror="this.remove()">` : "";
+  const img = p.image ? `<img src="${esc(p.image)}" alt="" onerror="imgFallback(this)">` : "";
   return `<div class="${cls}" style="background:${p.color}"><span aria-hidden="true" style="position:absolute">${esc(p.initials)}</span>${img}</div>`;
 }
 function person(key){
@@ -696,7 +700,7 @@ ${d.actions.map(esc).join("\n\n")}
   }
   if(d.type==="photo"){
     return `<div class="doc"><div class="doc-head"><span class="doc-tag notes">${esc(d.tagText)}</span><span class="doc-meta">${esc(d.meta)}</span></div>
-      <figure class="photo"><img src="${esc(d.src)}" alt="${esc(d.alt)}" onerror="this.closest('figure').classList.add('missing')"><div class="ph-missing" aria-hidden="true">Site photo: add ${esc(d.src)}</div>
+      <figure class="photo"><img src="${esc(d.src)}" alt="${esc(d.alt)}" onerror="imgFallback(this,true)"><div class="ph-missing" aria-hidden="true">Site photo: add ${esc(d.src)}</div>
       <figcaption>${esc(d.caption)}</figcaption></figure></div>`;
   }
   if(d.type==="notes"){
@@ -713,6 +717,15 @@ ${d.actions.map(esc).join("\n\n")}
     return `<div class="guide">${avatar(d.person,"")}<div class="bubble"><div class="role">${esc(PEOPLE[d.person].name)}</div>${d.body.map(t=>`<p>${esc(t)}</p>`).join("")}${player(d.audio, PEOPLE[d.person].name)}</div></div>`;
   }
   return "";
+}
+
+/* images: if not next to index.html, try the source/ folder */
+function imgFallback(el, isPhoto){
+  const tried = +(el.dataset.tries||0);
+  const base = el.getAttribute("src").replace(/^(source|Source)\//,"");
+  const alts = ["source/"+base, "Source/"+base];
+  if(tried < alts.length){ el.dataset.tries = tried+1; el.src = alts[tried]; return; }
+  if(isPhoto) el.closest("figure").classList.add("missing"); else el.remove();
 }
 
 /* audio players: show only when the file loads */
@@ -735,7 +748,7 @@ function initPlayers(root){
     const file = el.dataset.src.split("/").pop();
     const names = [file]; if(file==="02-voicemail-np.mp3") names.push("02-voicemail-n.mp3");
     const tries = [];
-    ["audio/","source audio/","source%20audio/","Source Audio/","source_audio/","source-audio/"].forEach(f => names.forEach(n => tries.push(f+n)));
+    ["audio/","source/audio/","Source/audio/","source audio/","source%20audio/"].forEach(f => names.forEach(n => tries.push(f+n)));
     let i = 0;
     a.addEventListener("error", () => { i++; if(i < tries.length) a.src = tries[i]; });
     a.src = tries[0];
@@ -979,3 +992,4 @@ resume();
 </script>
 </body>
 </html>
+Displaying index-code.txt.
